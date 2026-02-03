@@ -1,18 +1,54 @@
 <!doctype html>
+<!--
+  商品場所検索（ユーザー向け）
+  - スプレッドシート（GAS）から取得した商品データを検索し、
+    店内マップ上にピン表示＆結果リスト表示する画面。
+  - PWA対応（manifest + Service Worker は app.js 側で登録）
+  - QRスキャン機能あり（scanner.js が担当 / jsQR も利用）
+-->
 <html lang="ja">
 <head>
+  <!-- 文字コード指定：日本語を安全に扱うためUTF-8 -->
   <meta charset="utf-8" />
+   <!-- モバイル表示最適化：画面幅に合わせ、初期ズームを1に固定 -->
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- ブラウザのタブに表示されるタイトル -->
   <title>商品場所検索</title>
+  <!-- PWA（ホーム画面追加）用のマニフェスト -->
+  <!-- ※manifest.json は「コメント無しの純粋なJSON」である必要があります -->
   <link rel="manifest" href="./manifest.json">
+   <!-- アドレスバー/ステータスバーの色（主にモバイル） -->
   <meta name="theme-color" content="#111111">
+  <!-- 画面デザイン用CSS（入力欄、ボタン、地図、カード、モーダル等） -->
   <link rel="stylesheet" href="./css/style.css">
 </head>
 
 <body>
+  <!-- =========================
+       ヘッダー（検索UIエリア）
+       =========================
+       - 画面上部に固定（sticky）：検索欄が常に使える
+       - 検索キーワード、検索範囲、各種ボタン、カテゴリボタン群を配置
+  -->
 <header>
+  <!-- row：CSSのFlexレイアウト用クラス（横並び） -->
   <div class="row">
+    <!--
+        検索キーワード入力欄
+        id="q" は app.js が参照して検索処理に使用
+        autocomplete="off"：ブラウザの候補表示を抑制（端末共有の現場などで好まれる）
+      -->
     <input id="q" placeholder="商品名 / カテゴリ / ブランド（例：牛乳）" autocomplete="off" />
+    <!--
+        検索モード（検索範囲の絞り込み）
+        id="mode" は app.js が参照
+        value:
+          all      : 全フィールド横断検索（_index を使用）
+          name     : 商品名だけ
+          category : カテゴリだけ
+          brand    : ブランドだけ
+          keywords : 別名（同義語）だけ
+      -->
     <select id="mode" title="検索範囲">
       <option value="all">全部</option>
       <option value="name">商品名</option>
@@ -20,37 +56,122 @@
       <option value="brand">ブランド</option>
       <option value="keywords">別名</option>
     </select>
+    <!--
+        検索実行ボタン
+        id="btn" を app.js が監視し、runSearch() を呼び出す
+      -->
     <button id="btn">検索</button>
+    <!--
+        再読込ボタン
+        - 最新データを取り直したい場合に使用
+        - app.js の init(true)（force=true）で APIキャッシュ無視の再取得
+      -->
     <button id="refresh" style="background:#444;">再読込</button>
+    <!--
+        QRスキャン起動ボタン
+        - scanner.js が id="scan" のクリックでモーダルを開きカメラを起動
+        - 読み取った文字列を検索欄に入れて検索する（app.js 側で callback）
+      -->
     <button id="scan" style="background:#0a7;">QR</button>
   </div>
+  <!--
+      カテゴリボタンの表示エリア
+      - ui.js の renderCategoryButtons() がボタンを動的に生成してここへ追加
+      - 例：「全て」「乳製品」「菓子」など
+    -->
   <div class="catBar" id="catBar"></div>
 </header>
 
+  <!-- =========================
+       メイン表示エリア
+       =========================
+       - マップ（ピン表示の土台）
+       - 状態表示（meta）
+       - 検索結果リスト（list）
+  -->
 <main>
+  <!--
+      マップ表示領域（ピンの親要素）
+      id="mapWrap" は ui.js の addPin() が参照し、.pin をここに append する
+      画像の上に position:absolute のピンを重ねるため、CSSで position:relative を指定
+    -->
   <div class="mapWrap" id="mapWrap">
+    <!-- 店内マップ画像（ピンはこの上に重ねて表示） -->
     <img src="./map.jpg" alt="店内マップ" />
   </div>
+  <!--
+      meta：メッセージ/検索状況/選択中アイテム情報などの表示エリア
+      ui.js の showMessage() や updateMeta() が innerHTML を更新
+      例：
+        - 「準備OK。検索するか、カテゴリを選んでください。」
+        - 「見つかった商品：牛乳 1L / 場所：B-2 冷蔵」
+        - 「一致する商品が見つかりませんでした。」
+    -->
   <div class="meta" id="meta"></div>
+  <!--
+      list：検索結果のカード一覧表示エリア
+      ui.js の renderList() が .card を生成してここに追加する
+      クリックすると、その商品をフォーカス（ピン表示＆meta更新）
+    -->
   <div class="list" id="list"></div>
 </main>
 
+  <!-- =========================
+       QRスキャン用モーダル
+       =========================
+       - 初期状態はCSSで display:none
+       - scanner.js が表示/非表示、カメラ開始/停止、解析ループを制御
+  -->
 <div id="scanModal">
   <div class="scan-content">
     <div class="scan-header">
+      <!-- モーダルのタイトル -->
       <strong>QRコード読み取り</strong>
+      <!--
+          モーダルを閉じるボタン
+          id="scanClose" を scanner.js が監視し、カメラ停止＆モーダル非表示
+        -->
       <button id="scanClose" style="border:0; background:#444; color:#fff; border-radius:10px; padding:8px 10px;">閉じる</button>
     </div>
     <div class="scan-body">
+      <!--
+          カメラ映像表示用 video
+          - playsinline：iOSで全画面化を避ける
+          - autoplay / muted：ブラウザ要件を満たし自動再生しやすくする
+          - scanner.js が srcObject に getUserMedia の stream を設定する
+        -->
       <video id="scanVideo" playsinline autoplay muted></video>
+      <!--
+          解析用canvas（表示しない）
+          - jsQR フォールバック時、videoのフレームをcanvasへ描画して解析する
+        -->
       <canvas id="scanCanvas" style="display:none;"></canvas>
+      <!--
+          スキャン状況メッセージ表示（例：許可してください、起動中、検出中…）
+          scanner.js の setMsg() が textContent を更新する
+        -->
       <div id="scanMsg" style="margin-top:10px; font-size:13px; color:#555;"></div>
     </div>
   </div>
 </div>
 
+  <!--
+    外部ライブラリ：jsQR
+    - BarcodeDetector が使えない環境（例：iOS Safari）でのフォールバックとして利用
+    - scanner.js は window.jsQR の存在を見て fallback 解析を行う
+    ※オフライン完全対応したい場合は、jsQR をローカルに置いてSWでプリキャッシュ推奨
+  -->
 <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
 
+  <!--
+    アプリ本体（ES Modules）
+    - js/app.js が入口
+    - api.js：GASからデータ取得
+    - ui.js ：描画
+    - scanner.js：QR読み取り
+    - PWA Service Worker 登録も app.js 内で実行
+  -->
 <script type="module" src="./js/app.js"></script>
 </body>
+
 </html>
