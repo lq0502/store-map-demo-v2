@@ -5,32 +5,54 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>座標登録ツール（スタッフ用）</title>
   <meta name="theme-color" content="#111111">
+  
   <style>
+    /* ページ全体の余白を消し、フォントを見やすく設定 */
     body{ margin:0; font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; }
+    /* ヘッダーを画面上部に固定 (sticky) */
     header{ position: sticky; top:0; background:#fff; z-index:10; padding:12px; border-bottom:1px solid #E6E6E6; }
+    /* 横並びレイアウト用の設定 */
     .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    /* 入力フォームの基本デザイン */
     input{ padding:10px 12px; font-size:16px; border:1px solid #ddd; border-radius:10px; }
+    /* 横幅を広くとる入力欄 */
     input.wide{ flex:1; min-width:260px; }
+    /* ボタンのデザイン */
     button{ padding:10px 12px; font-size:16px; border:0; border-radius:10px; background:#111; color:#fff; }
+    /* サブボタン（少し薄い色） */
     button.sub{ background:#444; }
+    
+    /* メインエリアのレイアウト */
     main{ padding:12px; display:grid; gap:12px; }
+    
+    /* マップ画像の親要素 */
     .mapWrap{ position:relative; border:1px solid #eee; border-radius:14px; overflow:hidden; }
+    /* 画像のドラッグ禁止設定などを追加 */
     .mapWrap img{ width:100%; display:block; user-select:none; -webkit-user-drag:none; }
+    
+    /* クリックした場所に表示する赤い丸印 */
     .marker{
       position:absolute; width:14px; height:14px; border-radius:999px;
-      background:#ff2d55; transform:translate(-50%,-50%);
+      background:#ff2d55; transform:translate(-50%,-50%); /* 中心を合わせる */
       box-shadow:0 10px 25px rgba(0,0,0,.18);
       border:2px solid #fff;
-      pointer-events:none;
+      pointer-events:none; /* マーカー自体はクリック判定を受けない */
     }
+    
+    /* 下部の情報パネル */
     .panel{ border:1px solid #eee; border-radius:14px; padding:12px; background:#fff; }
+    /* 小さな注釈テキスト用クラス */
     .k{ color:#666; font-size:13px; margin-top:6px; }
+    /* 等幅フォント（数字を見やすくするため） */
     .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    
+    /* 出力用テキストエリア */
     textarea{
       width:100%; min-height:88px; padding:10px 12px; font-size:14px;
       border:1px solid #ddd; border-radius:10px; resize:vertical;
     }
     .note{ color:#444; line-height:1.6; }
+    /* カテゴリタグのような見た目 */
     .pill{ display:inline-block; font-size:12px; padding:4px 8px; border:1px solid #eee; border-radius:999px; margin-right:6px; }
   </style>
 </head>
@@ -74,55 +96,76 @@
 </main>
 
 <script>
+  // DOM要素（HTMLタグ）を取得して変数に入れます
   const mapImg  = document.getElementById("mapImg");
   const marker  = document.getElementById("marker");
+  // document.getElementById を $ という短い名前で使えるようにする便利関数
   const $ = (id) => document.getElementById(id);
+  // 小数点第2位で四捨五入する関数
   const round2 = (n) => Math.round(n * 100) / 100;
 
+  // 入力された情報と座標を結合して、TSV（タブ区切りテキスト）を作る関数
   function buildTSV(x, y){
-    const name = $("name").value.trim();
+    const name = $("name").value.trim();         // trim() で前後の空白を除去
     const category = $("category").value.trim();
     const brand = $("brand").value.trim();
     const area = $("area").value.trim();
     const keywords = $("keywords").value.trim();
+    
+    // 配列に入れて join("\t") でタブ文字で連結します
     // 列順：name, category, brand, area, x, y, keywords
     return [name, category, brand, area, x, y, keywords].join("\t");
   }
 
+  // 画面上の数値を更新する関数
   function updateOutput(x, y){
-    $("x").textContent = x;
-    $("y").textContent = y;
-    $("tsv").value = buildTSV(x, y);
+    $("x").textContent = x;  // 画面の x 表示を更新
+    $("y").textContent = y;  // 画面の y 表示を更新
+    $("tsv").value = buildTSV(x, y); // テキストエリアの中身を更新
   }
 
+  // 赤いマーカーを指定位置に移動させる関数
   function placeMarker(px, py){
-    marker.style.display = "block";
-    marker.style.left = px + "px";
-    marker.style.top  = py + "px";
+    marker.style.display = "block"; // 表示状態にする
+    marker.style.left = px + "px";  // 左からの位置 (px)
+    marker.style.top  = py + "px";  // 上からの位置 (px)
   }
 
+  // マップクリック時の座標計算処理
   function getXYPercentFromClick(event){
+    // 画像の画面上の位置情報を取得
     const rect = mapImg.getBoundingClientRect();
+    
+    // クリック位置(event.client) から 画像の左上位置(rect.left/top) を引く
     const clickX = event.clientX - rect.left;
     const clickY = event.clientY - rect.top;
+    
+    // 画像全体の幅・高さに対する割合(%)を計算
     const xPct = round2((clickX / rect.width) * 100);
     const yPct = round2((clickY / rect.height) * 100);
+    
+    // マーカーを置いて、数値を更新
     placeMarker(clickX, clickY);
     updateOutput(xPct, yPct);
   }
 
+  // 画像がクリックされたら計算関数を実行
   mapImg.addEventListener("click", (e) => { getXYPercentFromClick(e); });
 
+  // 「行をコピー」ボタンの処理
   $("copy").addEventListener("click", async () => {
     const text = $("tsv").value.trim();
+    // テキストが空なら警告を出して終了
     if(!text){
       alert("先にマップをクリックして座標を取得してください。");
       return;
     }
     try{
+      // クリップボードにテキストを書き込む（モダンなブラウザ用）
       await navigator.clipboard.writeText(text);
       alert("コピーしました。スプレッドシートに貼り付けてください。");
     }catch(e){
+      // エラー時のフォールバック（古いブラウザ用）：テキストを選択してコピーコマンド実行
       $("tsv").focus();
       $("tsv").select();
       document.execCommand("copy");
@@ -130,17 +173,20 @@
     }
   });
 
+  // 「リセット」ボタンの処理
   $("clear").addEventListener("click", () => {
-    marker.style.display = "none";
+    marker.style.display = "none"; // マーカーを消す
     $("x").textContent = "-";
     $("y").textContent = "-";
-    $("tsv").value = "";
+    $("tsv").value = "";           // テキストエリアを空にする
   });
 
+  // 入力フォームのどれかが書き換えられたら、リアルタイムでTSVも更新する
   ["name","category","brand","area","keywords"].forEach(id => {
     $(id).addEventListener("input", () => {
       const x = $("x").textContent;
       const y = $("y").textContent;
+      // 座標が既に取得されている場合のみ更新
       if(x !== "-" && y !== "-"){
         $("tsv").value = buildTSV(x, y);
       }
