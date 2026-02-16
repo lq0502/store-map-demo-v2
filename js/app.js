@@ -4,7 +4,7 @@
 // - UI描画は ui.js に委譲（ピン/リスト/カテゴリボタン/メッセージ）
 // - QR読み取りは scanner.js に委譲（読み取った文字列で検索）
 
-import { loadItems, norm } from './api.js';
+import { loadItems, norm, saveItemsCache, loadItemsCache, getItemsCacheTime } from './api.js';
 import * as UI from './ui.js';
 import { initScanner } from './scanner.js';
 
@@ -96,20 +96,51 @@ function handleCategoryClick(cat){
 
 // --- Initialization ---
 // データ取得＆初期描画
-// force=true の場合はキャッシュを無視して取り直す（再読込ボタン用）
+// force=true の場合はキャッシュ無視で取り直す（再読込ボタン用）
 async function init(force = false){
-  try{
+  // 1) force でない場合、まずローカルキャッシュで即表示
+  if(!force){
+    const cached = loadItemsCache();
+    if(cached && cached.length){
+      allItems = cached;
+      UI.renderCategoryButtons(allItems, selectedCategory, handleCategoryClick);
+
+      const t = getItemsCacheTime();
+      const dt = t ? new Date(t) : null;
+      const timeLabel = dt ? `${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,"0")}/${String(dt.getDate()).padStart(2,"0")} ${String(dt.getHours()).padStart(2,"0")}:${String(dt.getMinutes()).padStart(2,"0")}` : "";
+      UI.showMessage(`準備OK（キャッシュ${timeLabel ? "：" + timeLabel : ""}）。更新確認中…`);
+      // ここで return しない：裏で最新データを取りに行く
+    }else{
+      UI.showMessage("データ読み込み中…");
+    }
+  }else{
     UI.showMessage("データ読み込み中…");
-    // APIから商品一覧を取得（各行には _index が付与される想定）
-    allItems = await loadItems({force});
-    // カテゴリボタンを生成（"全て" + 取得データ内のカテゴリ）
+  }
+
+  // 2) ネットワークから最新を取得（成功したらキャッシュ更新）
+  try{
+    const fresh = await loadItems({force});
+    allItems = fresh;
+    saveItemsCache(fresh);
+
     UI.renderCategoryButtons(allItems, selectedCategory, handleCategoryClick);
+
+    // キャッシュ表示後に更新できた場合も、最終的に通常のメッセージに戻す
     UI.showMessage("準備OK。検索するか、カテゴリを選んでください。");
   }catch(e){
     console.error(e);
-    UI.showMessage("データ取得に失敗しました。");
+
+    // 3) ネット取得に失敗した場合：キャッシュが出ていれば継続、無ければエラー表示
+    const cached = loadItemsCache();
+    if(cached && cached.length){
+      // キャッシュで動作可能：メッセージだけ更新
+      UI.showMessage("準備OK（キャッシュ）。現在オフラインの可能性があります。");
+    }else{
+      UI.showMessage("データ取得に失敗しました。");
+    }
   }
 }
+
 
 // --- Event Listeners ---
 // 検索ボタン
@@ -133,3 +164,4 @@ if ("serviceWorker" in navigator) {
 
 // Start：初回起動（通常取得）
 init(false);
+
