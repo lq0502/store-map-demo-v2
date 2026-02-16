@@ -1,10 +1,4 @@
 <!doctype html>
-<!--
-  top.html（トップページ / 入口画面）
-  - 操作を「2択」にして迷わせない
-    1) 自分の端末で探す：QRを読み取ってスマホで開く
-    2) この端末で探す：この端末で検索画面へ
--->
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
@@ -16,6 +10,11 @@
   <link rel="stylesheet" href="./css/style.css">
 
   <style>
+    :root{
+      /* QRとボタンを同サイズにする基準（必要ならここだけ調整） */
+      --box: 280px;
+    }
+
     main{ padding:12px; }
 
     .grid{
@@ -26,6 +25,7 @@
     }
     @media (max-width:900px){
       .grid{ grid-template-columns: 1fr; }
+      :root{ --box: min(78vw, 320px); }
     }
 
     .tile{
@@ -35,8 +35,7 @@
       padding:16px;
       display:flex;
       flex-direction:column;
-      gap:14px;
-      min-height: 320px;
+      min-height: 360px;
     }
 
     /* 画面上部タイトル：中央寄せ */
@@ -46,55 +45,43 @@
       font-size:18px;
     }
 
+    /* 2つの見出しを同じ位置（同一高さ）に置く */
     .title{
       font-size:24px;
       font-weight:800;
       margin:0;
       line-height:1.2;
+      text-align:center;
     }
 
-    /* 左：QRの上にタイトルを「QRに対して」中央寄せ */
-    .qrWrap{
-      margin-top:auto;
+    /* 見出しの下を“中身エリア”として中央寄せ */
+    .content{
+      flex:1;
       display:flex;
-      flex-direction:column;
-      align-items:center;   /* 子要素（タイトル/画像）を中央に */
+      align-items:center;
       justify-content:center;
-      gap:12px;
+      padding-top:14px;
     }
-    .qrWrap img{
-      width:min(280px, 78vw);
-      height:auto;
+
+    /* QR */
+    .qrImg{
+      width: var(--box);
+      height: var(--box);
+      object-fit: contain;
       display:block;
     }
-    .qrTitle{
-      text-align:center;
-    }
 
-    /* 右：ボタンの上にタイトルを「ボタンに対して」中央寄せ */
-    .btnWrap{
-      margin-top:auto;
-      display:flex;
-      flex-direction:column;
-      align-items:center;   /* 子要素（タイトル/ボタン）を中央に */
-      justify-content:center;
-      gap:12px;
-      width:100%;
-    }
-    .btnTitle{
-      text-align:center;
-    }
-
+    /* ボタン（QRと同サイズの正方形） */
     .bigBtn{
-      width:100%;
-      padding:20px 16px;
-      font-size:26px;
+      width: var(--box);
+      height: var(--box);
       border-radius:14px;
-      background:#111;
+      border:1px solid #dbeafe;
+      background:#2563eb;  /* 青 */
       color:#fff;
-      border:0;
+      font-size:28px;
+      font-weight:800;
       cursor:pointer;
-      max-width: 520px;     /* 端末が広い時にボタンが伸びすぎないように */
     }
     .bigBtn:active{ transform: translateY(1px); }
   </style>
@@ -107,18 +94,18 @@
 
   <main>
     <div class="grid">
-      <!-- 左：自分の端末で探す（タイトルはQRに対して中央） -->
+      <!-- 左：QR -->
       <section class="tile">
-        <div class="qrWrap">
-          <h1 class="title qrTitle">自分の端末で探す</h1>
-          <img src="./qr.png" alt="QRコード">
+        <h1 class="title">自分の端末で探す</h1>
+        <div class="content">
+          <img class="qrImg" src="./qr.png" alt="QRコード">
         </div>
       </section>
 
-      <!-- 右：この端末で探す（タイトルはボタンに対して中央） -->
+      <!-- 右：検索ボタン -->
       <section class="tile">
-        <div class="btnWrap">
-          <h1 class="title btnTitle">この端末で探す</h1>
+        <h1 class="title">この端末で探す</h1>
+        <div class="content">
           <button class="bigBtn" onclick="location.href='./index.html'">検索</button>
         </div>
       </section>
