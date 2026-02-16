@@ -36,7 +36,10 @@ export async function loadItems({force=false}={}){
 // 他のファイルでも使えるように norm 関数をエクスポート
 export { norm };
 
-// js/api.js（在文件末尾追加）
+
+// ===== ローカルキャッシュ（起動高速化用）=====
+// - 取得済みデータ（_index付き）を localStorage に保存して次回起動を高速化
+// - キャッシュがあれば先に表示し、裏で最新取得して更新する
 
 const LS_KEY_ITEMS = "storemap_items_cache_v1";
 const LS_KEY_TIME  = "storemap_items_cache_time_v1";
@@ -73,4 +76,3 @@ export function getItemsCacheTime(){
     return null;
   }
 }
-
