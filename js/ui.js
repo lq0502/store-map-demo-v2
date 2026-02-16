@@ -3,135 +3,103 @@
 // ID取得の短縮関数
 const $ = (id) => document.getElementById(id);
 
-// 地図上のすべてのピン/ラインを削除する関数
+// 地図上のすべてのピン/線を削除する関数
 export function clearPins(){
-  // .pin（点）と .line（線）を全削除
-  document.querySelectorAll(".pin, .line").forEach(el => el.remove());
+  // ピン（点）
+  document.querySelectorAll(".pin").forEach(el => el.remove());
+  // 範囲表示（線）
+  document.querySelectorAll(".rangeLine").forEach(el => el.remove());
 }
 
-// ===== 内部：ラベル文字を決める =====
-function getLabelText(row){
-  return (row.label ?? row.name ?? "").toString().trim();
-}
-
-// ===== 点（従来のピン＋ラベル） =====
-function addPoint(row){
+// 範囲（開始〜終了）を線で表示する（x,y -> x2,y2）
+function addRangeLine(row){
   const wrap = $("mapWrap");
-  const pin = document.createElement("div");
-  pin.className = "pin";
-
-  // マウスオーバー時のツールチップ
-  pin.title = `${row.name ?? ""}（${row.area ?? ""}）`;
-
-  // 座標（%）
-  pin.style.left = `${Number(row.x)}%`;
-  pin.style.top  = `${Number(row.y)}%`;
-
-  // ラベル（pinLabelクラスがあればそれを使用。無ければ最小スタイルをJSで付与）
-  const labelText = getLabelText(row);
-  if(labelText){
-    const label = document.createElement("div");
-    label.className = "pinLabel";
-    label.textContent = labelText;
-
-    // style.cssを触らずui.jsだけで完結させる最低限の見た目
-    label.style.position = "absolute";
-    label.style.left = "12px";     // ピン右
-    label.style.top  = "-6px";     // 少し上
-    label.style.padding = "4px 8px";
-    label.style.borderRadius = "999px";
-    label.style.border = "1px solid #eee";
-    label.style.background = "rgba(255,255,255,.92)";
-    label.style.boxShadow = "0 8px 16px rgba(0,0,0,.12)";
-    label.style.fontSize = "12px";
-    label.style.color = "#111";
-    label.style.whiteSpace = "nowrap";
-    label.style.pointerEvents = "none";
-
-    pin.appendChild(label);
-  }
-
-  wrap.appendChild(pin);
-}
-
-// ===== 線（横に長い商品の範囲表示） =====
-// 前提：row.x,row.y,row.x2,row.y2 は「%」で入っている
-function addLine(row){
-  const wrap = $("mapWrap");
+  if(!wrap) return;
 
   const x1 = Number(row.x);
   const y1 = Number(row.y);
   const x2 = Number(row.x2);
   const y2 = Number(row.y2);
 
-  // どれかが不正なら点表示にフォールバック
-  if(!Number.isFinite(x1) || !Number.isFinite(y1) || !Number.isFinite(x2) || !Number.isFinite(y2)){
-    addPoint(row);
-    return;
-  }
+  // 数値として成立していない場合は描画しない
+  if(!Number.isFinite(x1) || !Number.isFinite(y1) || !Number.isFinite(x2) || !Number.isFinite(y2)) return;
 
-  // mapWrapの実サイズ(px)で距離と角度を計算
-  const rect = wrap.getBoundingClientRect();
-  const px1 = rect.width  * (x1 / 100);
-  const py1 = rect.height * (y1 / 100);
-  const px2 = rect.width  * (x2 / 100);
-  const py2 = rect.height * (y2 / 100);
-
-  const dx = px2 - px1;
-  const dy = py2 - py1;
-  const len = Math.sqrt(dx*dx + dy*dy);
-  const ang = Math.atan2(dy, dx) * 180 / Math.PI;
-
-  // 线段本体
+  // wrapは position:relative 前提（既存CSSにあり）
   const line = document.createElement("div");
-  line.className = "line";
-  line.title = `${row.name ?? ""}（${row.area ?? ""}〜${row.area2 ?? ""}）`;
+  line.className = "rangeLine";
 
-  // 线段样式（不依赖style.css，JS内自带）
+  // 線分ベクトル
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.sqrt(dx*dx + dy*dy);
+
+  // 0に近い場合は線を出す意味がないのでスキップ
+  if(len < 0.001) return;
+
+  // 角度（deg）
+  const deg = Math.atan2(dy, dx) * 180 / Math.PI;
+
+  // 見た目（style.cssを触らず、ここで完結）
+  // - left/top は開始点
+  // - width は距離（%）
+  // - transform-origin を左端にして回転
   line.style.position = "absolute";
-  line.style.height = "10px";                 // 太さ
-  line.style.borderRadius = "999px";
-  line.style.background = "rgba(255,45,85,.25)";
-  line.style.boxShadow = "0 0 14px rgba(255,45,85,.55)";
-  line.style.transformOrigin = "0 50%";
-  line.style.pointerEvents = "none";
-
-  // 左端を (x1,y1) に置いて回転させる
   line.style.left = `${x1}%`;
   line.style.top  = `${y1}%`;
-  line.style.width = `${len}px`;
-  line.style.transform = `translate(0,-50%) rotate(${ang}deg)`;
+  line.style.width = `${len}%`;
+  line.style.height = "10px";              // 太さ（好みで調整可）
+  line.style.borderRadius = "999px";
+  line.style.transformOrigin = "0 50%";
+  line.style.transform = `translate(0, -50%) rotate(${deg}deg)`;
+  line.style.pointerEvents = "none";
+  line.style.zIndex = "2";                 // ピンより下にしたい場合は調整
 
-  // 両端の丸（点っぽく見せる）
-  const endA = document.createElement("div");
-  const endB = document.createElement("div");
-  [endA, endB].forEach(end => {
-    end.style.position = "absolute";
-    end.style.width = "14px";
-    end.style.height = "14px";
-    end.style.borderRadius = "999px";
-    end.style.background = "#FF2D55";
-    end.style.border = "3px solid #fff";
-    end.style.boxShadow = "0 10px 18px rgba(0,0,0,.20)";
-    end.style.top = "50%";
-    end.style.transform = "translate(-50%,-50%)";
-  });
-  endA.style.left = "0";
-  endB.style.left = "100%";
-  line.appendChild(endA);
-  line.appendChild(endB);
+  // “光る” 느낌：淡い発光 + 透明度
+  line.style.background = "rgba(0, 180, 255, 0.35)";
+  line.style.boxShadow  = "0 0 18px rgba(0, 180, 255, 0.45)";
 
-  // ラベル（線の中央に）
-  const labelText = getLabelText(row);
+  // ツールチップ（任意）
+  line.title = `${row.name ?? ""}（${row.area ?? ""}〜${row.area2 ?? ""}）`;
+
+  wrap.appendChild(line);
+}
+
+// 地図上にピンを1つ追加する関数（ラベル付き）
+// - row.x,row.y は必須（%）
+// - row.x2,row.y2 があれば、範囲を線で追加表示する
+export function addPin(row){
+  const wrap = $("mapWrap"); // 地図の親要素
+  if(!wrap) return;
+
+  // 先に範囲線（必要なら）を描画
+  // ※ピンの前に置くことで、視覚的に「線の上に点」が乗る
+  if(row.x2 != null && row.y2 != null){
+    addRangeLine(row);
+  }
+
+  const pin = document.createElement("div"); // div要素を作成
+  pin.className = "pin"; // CSSで丸く赤く表示される
+
+  // マウスオーバー時のツールチップ
+  pin.title = `${row.name ?? ""}（${row.area ?? ""}）`;
+
+  // 座標を設定（%指定）
+  pin.style.left = `${Number(row.x)}%`;
+  pin.style.top  = `${Number(row.y)}%`;
+
+  // --- ラベル（地図上に文字を出す） ---
+  // 表示文字：label があれば label、なければ name
+  const labelText = (row.label ?? row.name ?? "").toString().trim();
   if(labelText){
     const label = document.createElement("div");
-    label.className = "lineLabel";
+    label.className = "pinLabel";
     label.textContent = labelText;
 
+    // ここで最低限の見た目を付ける（style.cssを触らずにui.jsだけで完結）
+    // ※既存の .pin の transform を壊さないように、ラベルは子要素として配置する
     label.style.position = "absolute";
-    label.style.left = "50%";
-    label.style.top  = "-18px";
-    label.style.transform = "translateX(-50%)";
+    label.style.left = "12px";     // ピンの右側へ
+    label.style.top  = "-6px";     // 少し上へ
     label.style.padding = "4px 8px";
     label.style.borderRadius = "999px";
     label.style.border = "1px solid #eee";
@@ -140,35 +108,25 @@ function addLine(row){
     label.style.fontSize = "12px";
     label.style.color = "#111";
     label.style.whiteSpace = "nowrap";
-    label.style.pointerEvents = "none";
+    label.style.pointerEvents = "none"; // ラベルでクリック判定を邪魔しない
 
-    line.appendChild(label);
+    pin.appendChild(label);
   }
 
-  wrap.appendChild(line);
-}
-
-// 地図上にピン/ラインを1つ追加する関数（外部API）
-export function addPin(row){
-  // row.x2 / row.y2 があれば「線」、なければ「点」
-  const hasLine =
-    row.x2 !== undefined && row.y2 !== undefined &&
-    row.x2 !== "" && row.y2 !== "";
-
-  if(hasLine){
-    addLine(row);
-  }else{
-    addPoint(row);
-  }
+  // 地図の要素に追加（rangeLineより上に見せたいので zIndex を少し上げる）
+  pin.style.zIndex = "3";
+  wrap.appendChild(pin);
 }
 
 // 検索結果リストを描画する関数
+// found: 見つかったデータの配列, onCardClick: クリック時の処理関数
 export function renderList(found, onCardClick){
   const list = $("list");
-  list.innerHTML = "";
+  list.innerHTML = ""; // 一旦リストを空にする
 
+  // 最初から12件だけ表示（多すぎると重くなるため）
   found.slice(0, 12).forEach((row, i) => {
-    const div = document.createElement("div");
+    const div = document.createElement("div"); // カード用のdiv作成
     div.className = "card";
 
     div.innerHTML = `
@@ -180,12 +138,13 @@ export function renderList(found, onCardClick){
       <div class="small">場所：${row.area ?? "-"} / 座標：${row.x ?? "-"}, ${row.y ?? "-"}</div>
     `;
 
+    // クリックされたら onCardClick を実行
     div.addEventListener("click", () => onCardClick(row, i));
-    list.appendChild(div);
+    list.appendChild(div); // 画面に追加
   });
 }
 
-// 画面上部のメッセージエリアを更新する関数
+// 画面上部のメッセージエリア（「〇〇が見つかりました」）を更新する関数
 export function updateMeta(row){
   $("meta").innerHTML =
     `見つかった商品：<b>${row.name ?? "-"}</b><br>` +
@@ -193,7 +152,7 @@ export function updateMeta(row){
     `場所：${row.area ?? "-"}${row.note ? "（" + row.note + "）" : ""}`;
 }
 
-// 単純なメッセージを表示する汎用関数
+// 単純なメッセージを表示する汎用関数（エラーや読み込み中など）
 export function showMessage(html){
   $("meta").innerHTML = html;
 }
