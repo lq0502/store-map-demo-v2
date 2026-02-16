@@ -5,7 +5,7 @@
 // - 画像/CSS/JSなどは stale-while-revalidate（表示は速く、裏で更新）
 
 // キャッシュ名（バージョンを変えるとキャッシュが更新される）
-const CACHE_NAME = "store-map-pwa-v5-split"; 
+const CACHE_NAME = "store-map-pwa-v6-split"; 
 
 // 事前キャッシュする静的アセット一覧（同一オリジン配下のみ）
 // ※外部CDN（例：unpkg）はここに入れず、必要ならローカル化して追加する
@@ -118,5 +118,6 @@ self.addEventListener("fetch", (event) => {
   // その他（CSS/JS/画像など）は stale-while-revalidate
   event.respondWith(staleWhileRevalidate(req));
 });
+
 
 
