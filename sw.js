@@ -11,9 +11,11 @@ const CACHE_NAME = "store-map-pwa-v4-split";
 // ※外部CDN（例：unpkg）はここに入れず、必要ならローカル化して追加する
 const PRECACHE_ASSETS = [
   "./",
+  "./top.html",
   "./index.html",
   "./admin.html",
   "./manifest.json",
+  "./qr.png",
   "./map.jpg",
   "./icon-192.png",
   "./icon-512.png",
@@ -116,3 +118,4 @@ self.addEventListener("fetch", (event) => {
   // その他（CSS/JS/画像など）は stale-while-revalidate
   event.respondWith(staleWhileRevalidate(req));
 });
+
