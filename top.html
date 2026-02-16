@@ -17,6 +17,7 @@
 
   <style>
     main{ padding:12px; }
+
     .grid{
       display:grid;
       grid-template-columns: 1fr 1fr;
@@ -26,6 +27,7 @@
     @media (max-width:900px){
       .grid{ grid-template-columns: 1fr; }
     }
+
     .tile{
       border:1px solid #eee;
       border-radius:14px;
@@ -36,25 +38,54 @@
       gap:14px;
       min-height: 320px;
     }
+
+    /* 画面上部タイトル：中央寄せ */
+    .appTitle{
+      text-align:center;
+      font-weight:800;
+      font-size:18px;
+    }
+
     .title{
       font-size:24px;
       font-weight:800;
       margin:0;
       line-height:1.2;
     }
+
+    /* 左：QRの上にタイトルを「QRに対して」中央寄せ */
     .qrWrap{
       margin-top:auto;
       display:flex;
+      flex-direction:column;
+      align-items:center;   /* 子要素（タイトル/画像）を中央に */
       justify-content:center;
-      align-items:center;
+      gap:12px;
     }
     .qrWrap img{
       width:min(280px, 78vw);
       height:auto;
       display:block;
     }
-    .bigBtn{
+    .qrTitle{
+      text-align:center;
+    }
+
+    /* 右：ボタンの上にタイトルを「ボタンに対して」中央寄せ */
+    .btnWrap{
       margin-top:auto;
+      display:flex;
+      flex-direction:column;
+      align-items:center;   /* 子要素（タイトル/ボタン）を中央に */
+      justify-content:center;
+      gap:12px;
+      width:100%;
+    }
+    .btnTitle{
+      text-align:center;
+    }
+
+    .bigBtn{
       width:100%;
       padding:20px 16px;
       font-size:26px;
@@ -63,6 +94,7 @@
       color:#fff;
       border:0;
       cursor:pointer;
+      max-width: 520px;     /* 端末が広い時にボタンが伸びすぎないように */
     }
     .bigBtn:active{ transform: translateY(1px); }
   </style>
@@ -70,21 +102,25 @@
 
 <body>
   <header>
-    <div style="font-weight:800;">商品場所検索</div>
+    <div class="appTitle">商品場所検索</div>
   </header>
 
   <main>
     <div class="grid">
+      <!-- 左：自分の端末で探す（タイトルはQRに対して中央） -->
       <section class="tile">
-        <h1 class="title">自分の端末で探す</h1>
         <div class="qrWrap">
+          <h1 class="title qrTitle">自分の端末で探す</h1>
           <img src="./qr.png" alt="QRコード">
         </div>
       </section>
 
+      <!-- 右：この端末で探す（タイトルはボタンに対して中央） -->
       <section class="tile">
-        <h1 class="title">この端末で探す</h1>
-        <button class="bigBtn" onclick="location.href='./index.html'">検索</button>
+        <div class="btnWrap">
+          <h1 class="title btnTitle">この端末で探す</h1>
+          <button class="bigBtn" onclick="location.href='./index.html'">検索</button>
+        </div>
       </section>
     </div>
   </main>
