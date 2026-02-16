@@ -12,25 +12,36 @@ export function clearPins(){
 }
 
 // 範囲（開始〜終了）を線で表示する（x,y -> x2,y2）
+// ★重要：%ではなく「px」で線を描く（縦横比でズレない）
 function addRangeLine(row){
   const wrap = $("mapWrap");
   if(!wrap) return;
 
-  const x1 = Number(row.x);
-  const y1 = Number(row.y);
-  const x2 = Number(row.x2);
-  const y2 = Number(row.y2);
+  const x1p = Number(row.x);
+  const y1p = Number(row.y);
+  const x2p = Number(row.x2);
+  const y2p = Number(row.y2);
 
   // 数値として成立していない場合は描画しない
-  if(!Number.isFinite(x1) || !Number.isFinite(y1) || !Number.isFinite(x2) || !Number.isFinite(y2)) return;
+  if(!Number.isFinite(x1p) || !Number.isFinite(y1p) || !Number.isFinite(x2p) || !Number.isFinite(y2p)) return;
 
-  // 線分ベクトル
+  // % → px（ここがズレの根本対策）
+  const W = wrap.clientWidth;
+  const H = wrap.clientHeight;
+  if(!W || !H) return;
+
+  const x1 = (x1p / 100) * W;
+  const y1 = (y1p / 100) * H;
+  const x2 = (x2p / 100) * W;
+  const y2 = (y2p / 100) * H;
+
+  // 線分ベクトル（px）
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len = Math.sqrt(dx*dx + dy*dy);
 
-  // 0に近い場合は線を出す意味がないのでスキップ
-  if(len < 0.001) return;
+  // 0に近い場合はスキップ
+  if(len < 0.5) return;
 
   // 角度（deg）
   const deg = Math.atan2(dy, dx) * 180 / Math.PI;
@@ -40,23 +51,19 @@ function addRangeLine(row){
 
   // 見た目（style.cssを触らず、ここで完結）
   line.style.position = "absolute";
-  line.style.left = `${x1}%`;
-  line.style.top  = `${y1}%`;
-  line.style.width = `${len}%`;
-
-  // ★ここがポイント：太さ＆発光を控えめにして「隣のマスまで光って見える」現象を減らす
-  line.style.height = "4px";                 // 太さ（10px→6px）
+  line.style.left = `${x1}px`;
+  line.style.top  = `${y1}px`;
+  line.style.width = `${len}px`;
+  line.style.height = "4px";                 // 太さ
   line.style.borderRadius = "999px";
-
   line.style.transformOrigin = "0 50%";
-  line.style.transform = `translateY(-50%) rotate(${deg}deg)`; // translate(0,-50%) と同等
-
+  line.style.transform = `translate(0, -50%) rotate(${deg}deg)`;
   line.style.pointerEvents = "none";
   line.style.zIndex = "2";
 
-  // “光る” 느낌：淡い発光 + 透明度（控えめ）
-  line.style.background = "rgba(0, 180, 255, 0.30)";          // 少し薄く
-  line.style.boxShadow  = "0 0 8px rgba(0, 180, 255, 0.35)"; // 18px→10px
+  // “光る” 느낌：控えめ
+  line.style.background = "rgba(0, 180, 255, 0.30)";
+  line.style.boxShadow  = "0 0 8px rgba(0, 180, 255, 0.35)";
 
   // ツールチップ（任意）
   line.title = `${row.name ?? ""}（${row.area ?? ""}〜${row.area2 ?? ""}）`;
@@ -93,6 +100,7 @@ export function addPin(row){
     label.className = "pinLabel";
     label.textContent = labelText;
 
+    // style.cssを触らずにui.jsだけで完結
     label.style.position = "absolute";
     label.style.left = "12px";
     label.style.top  = "-6px";
@@ -109,6 +117,7 @@ export function addPin(row){
     pin.appendChild(label);
   }
 
+  // 線より上に
   pin.style.zIndex = "3";
   wrap.appendChild(pin);
 }
@@ -169,4 +178,3 @@ export function renderCategoryButtons(items, activeCat, onCatClick){
     bar.appendChild(btn);
   });
 }
-
