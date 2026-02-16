@@ -35,3 +35,42 @@ export async function loadItems({force=false}={}){
 
 // 他のファイルでも使えるように norm 関数をエクスポート
 export { norm };
+
+// js/api.js（在文件末尾追加）
+
+const LS_KEY_ITEMS = "storemap_items_cache_v1";
+const LS_KEY_TIME  = "storemap_items_cache_time_v1";
+
+// キャッシュ保存（itemsは _index 付きの配列を想定）
+export function saveItemsCache(items){
+  try{
+    localStorage.setItem(LS_KEY_ITEMS, JSON.stringify(items));
+    localStorage.setItem(LS_KEY_TIME, String(Date.now()));
+  }catch(e){
+    // 容量超過などは無視（起動は続ける）
+  }
+}
+
+// キャッシュ読み込み（なければ null）
+export function loadItemsCache(){
+  try{
+    const raw = localStorage.getItem(LS_KEY_ITEMS);
+    if(!raw) return null;
+    const items = JSON.parse(raw);
+    if(!Array.isArray(items)) return null;
+    return items;
+  }catch(e){
+    return null;
+  }
+}
+
+// キャッシュの保存時刻（表示用）
+export function getItemsCacheTime(){
+  try{
+    const t = Number(localStorage.getItem(LS_KEY_TIME));
+    return Number.isFinite(t) ? t : null;
+  }catch(e){
+    return null;
+  }
+}
+
