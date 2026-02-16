@@ -68,11 +68,22 @@ function runSearch(){
     return;
   }
 
-  // 3. Render
-  // Focus first item
-  handleResultClick(found[0]);
+  // 3. Render（複数ピン表示）
+  UI.clearPins();
 
-  // Render list
+  // 地図に複数ピン（重くなるので上限）
+  const MAX_PINS = 12;
+  found.slice(0, MAX_PINS).forEach(row => {
+    const pos = resolveXY(row);
+    const r = { ...row, x: pos.x, y: pos.y }; // UIは row.x,row.y を使う
+    UI.addPin(r);
+  });
+
+  // meta は先頭候補を表示（後で「候補◯件」などに拡張可）
+  const firstPos = resolveXY(found[0]);
+  UI.updateMeta({ ...found[0], x: firstPos.x, y: firstPos.y });
+
+  // Render list（クリックで単一フォーカス）
   UI.renderList(found, (row) => handleResultClick(row));
 
   // Update Status text（必要ならUI側に表示領域を用意して使う）
@@ -83,7 +94,7 @@ function runSearch(){
 
 function handleResultClick(row){
   const pos = resolveXY(row);
-  const r = { ...row, x: pos.x, y: pos.y }; // UIは row.x,row.y を使うので上書き
+  const r = { ...row, x: pos.x, y: pos.y };
 
   UI.clearPins();
   UI.addPin(r);
@@ -105,7 +116,7 @@ async function init(force = false){
     if(cached && cached.length){
       allItems = cached;
 
-      // ★追加：棚座標もキャッシュがあれば先に復元（起動直後でも①A等が光る）
+      // 棚座標もキャッシュがあれば先に復元（起動直後でも①A等が光る）
       const shel = loadShelvesCache();
       if(shel) shelvesMap = shel;
 
@@ -133,7 +144,6 @@ async function init(force = false){
     shelvesMap = out.shelvesMap || {};
 
     saveItemsCache(allItems);
-    // ★追加：棚座標も保存
     saveShelvesCache(shelvesMap);
 
     UI.renderCategoryButtons(allItems, selectedCategory, handleCategoryClick);
@@ -146,7 +156,6 @@ async function init(force = false){
     if(cached && cached.length){
       allItems = cached;
 
-      // ★追加：オフラインでも棚キャッシュがあれば使う
       const shel = loadShelvesCache();
       if(shel) shelvesMap = shel;
 
