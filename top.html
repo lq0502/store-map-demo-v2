@@ -1,9 +1,9 @@
 <!doctype html>
 <!--
   top.html（トップページ / 入口画面）
-  - お客様が迷わず使えるように、操作を「2択」にする
-    1) 自分の端末で探す：QRを読み取って、自分のスマホで開く
-    2) この端末で探す：店内端末（iPad等）でそのまま検索画面へ
+  - 操作を「2択」にして迷わせない
+    1) 自分の端末で探す：QRを読み取ってスマホで開く
+    2) この端末で探す：この端末で検索画面へ
 -->
 <html lang="ja">
 <head>
@@ -11,15 +11,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>商品場所検索（トップ）</title>
 
-  <!-- PWA -->
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#111111">
-
-  <!-- 既存の見た目と揃える（フォントなど） -->
   <link rel="stylesheet" href="./css/style.css">
 
   <style>
-    /* トップ専用：大きく・迷わせないレイアウト */
     main{ padding:12px; }
     .grid{
       display:grid;
@@ -30,54 +26,38 @@
     @media (max-width:900px){
       .grid{ grid-template-columns: 1fr; }
     }
-
     .tile{
       border:1px solid #eee;
       border-radius:14px;
       background:#fff;
-      padding:14px;
+      padding:16px;
       display:flex;
       flex-direction:column;
-      gap:10px;
+      gap:14px;
       min-height: 320px;
     }
-
     .title{
-      font-size:22px;
+      font-size:24px;
       font-weight:800;
       margin:0;
       line-height:1.2;
     }
-    .desc{
-      margin:0;
-      color:#444;
-      line-height:1.6;
-      font-size:14px;
-    }
-
-    /* QR画像を大きく見せる */
     .qrWrap{
       margin-top:auto;
       display:flex;
       justify-content:center;
       align-items:center;
-      padding:10px;
-      border:1px dashed #e6e6e6;
-      border-radius:14px;
-      background:#fafafa;
     }
     .qrWrap img{
-      width:min(260px, 70vw);
+      width:min(280px, 78vw);
       height:auto;
       display:block;
     }
-
-    /* 大ボタン（検索入口） */
     .bigBtn{
       margin-top:auto;
       width:100%;
-      padding:18px 16px;
-      font-size:22px;
+      padding:20px 16px;
+      font-size:26px;
       border-radius:14px;
       background:#111;
       color:#fff;
@@ -89,46 +69,22 @@
 </head>
 
 <body>
-  <!-- ヘッダーは最小限：アプリ名だけ -->
   <header>
     <div style="font-weight:800;">商品場所検索</div>
-    <div class="hint">迷ったら「検索」を押してください。</div>
   </header>
 
   <main>
     <div class="grid">
-      <!-- 左：お客様が自分のスマホで使う（QRでURLを渡す） -->
       <section class="tile">
         <h1 class="title">自分の端末で探す</h1>
-        <p class="desc">
-          下のQRコードを読み取ると、この検索ページをお客様のスマホで開けます。<br>
-          （URLをスマホへ渡すためのQRです）
-        </p>
-
-        <!-- QRコード画像（内容はアプリURL） -->
         <div class="qrWrap">
-          <img src="./qr.png" alt="アプリURLのQRコード">
+          <img src="./qr.png" alt="QRコード">
         </div>
-
-        <p class="desc" style="color:#666; font-size:13px;">
-          ※カメラで読み取れない場合は、スタッフにお声がけください。
-        </p>
       </section>
 
-      <!-- 右：この端末でそのまま検索 -->
       <section class="tile">
         <h1 class="title">この端末で探す</h1>
-        <p class="desc">
-          店内端末（iPad等）でそのまま検索できます。<br>
-          画面を見ながら商品位置を確認してください。
-        </p>
-
-        <!-- 既存の検索画面へ -->
         <button class="bigBtn" onclick="location.href='./index.html'">検索</button>
-
-        <p class="desc" style="color:#666; font-size:13px;">
-          ※カテゴリから選ぶか、商品名で検索できます。
-        </p>
       </section>
     </div>
   </main>
