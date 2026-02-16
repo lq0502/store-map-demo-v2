@@ -7,7 +7,20 @@ import { initScanner } from './scanner.js';
 let allItems = [];
 let selectedCategory = "all";
 
+// 追加：棚座標マップ（例：{"①B2":{x:20.09,y:60.63}, ...}）
+let shelvesMap = {};
+
 const $ = (id) => document.getElementById(id);
+
+// 追加：row（商品）から最終座標を解決する
+// ルール：row.area に棚キー（例：①B2）が入っていれば shelvesMap を優先
+// 見つからなければ従来の row.x,row.y を使う（互換）
+function resolveXY(row){
+  const key = (row.area ?? "").toString().trim();
+  const pos = shelvesMap[key];
+  if(pos) return pos;
+  return { x: Number(row.x), y: Number(row.y) };
+}
 
 // --- Core Search Logic ---
 function runSearch(){
@@ -48,8 +61,8 @@ function runSearch(){
 
   // 3. Render
   // Focus first item
-  handleResultClick(found[0]); 
-  
+  handleResultClick(found[0]);
+
   // Render list
   UI.renderList(found, (row) => handleResultClick(row));
 
@@ -60,9 +73,12 @@ function runSearch(){
 }
 
 function handleResultClick(row){
+  const pos = resolveXY(row);
+  const r = { ...row, x: pos.x, y: pos.y }; // UIは row.x,row.y を使うので上書き
+
   UI.clearPins();
-  UI.addPin(row);
-  UI.updateMeta(row);
+  UI.addPin(r);
+  UI.updateMeta(r);
 }
 
 function handleCategoryClick(cat){
@@ -75,6 +91,7 @@ function handleCategoryClick(cat){
 // 起動を速くするため、まずキャッシュがあればそれで即表示し、裏で最新データを取得する
 async function init(force = false){
   // 1) force=false の時は、まずローカルキャッシュを試す
+  // ※棚（shelves）はキャッシュしていないので、キャッシュ起動中は従来の row.x,row.y で動く（互換）
   if(!force){
     const cached = loadItemsCache();
     if(cached && cached.length){
@@ -98,9 +115,10 @@ async function init(force = false){
 
   // 2) ネットワークから最新を取得（成功したらキャッシュ更新）
   try{
-    const fresh = await loadItems({force});
-    allItems = fresh;
-    saveItemsCache(fresh);
+    const out = await loadItems({force});
+    allItems = out.items;
+    shelvesMap = out.shelvesMap || {};
+    saveItemsCache(allItems);
 
     UI.renderCategoryButtons(allItems, selectedCategory, handleCategoryClick);
     UI.showMessage("準備OK。検索するか、カテゴリを選んでください。");
@@ -110,6 +128,7 @@ async function init(force = false){
     // 3) ネット取得に失敗：キャッシュがあれば継続、無ければエラー表示
     const cached = loadItemsCache();
     if(cached && cached.length){
+      allItems = cached;
       UI.showMessage("準備OK（キャッシュ）。現在オフラインの可能性があります。");
     }else{
       UI.showMessage("データ取得に失敗しました。");
