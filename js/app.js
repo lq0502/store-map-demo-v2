@@ -21,14 +21,51 @@ let shelvesMap = {};
 
 const $ = (id) => document.getElementById(id);
 
-// row（商品）から最終座標を解決する
-// ルール：row.area に棚キー（例：①B2）が入っていれば shelvesMap を優先
-// 見つからなければ従来の row.x,row.y を使う（互換）
+// ===== 座標解決ヘルパー =====
+
+// 棚キー（例：①B2）から座標を引く。無ければ null
+function getShelfPos(key){
+  const k = (key ?? "").toString().trim();
+  if(!k) return null;
+  const pos = shelvesMap[k];
+  if(pos && Number.isFinite(Number(pos.x)) && Number.isFinite(Number(pos.y))){
+    return { x: Number(pos.x), y: Number(pos.y) };
+  }
+  return null;
+}
+
+// 商品rowから単点座標を解決（area優先→なければrow.x,row.y）
 function resolveXY(row){
-  const key = (row.area ?? "").toString().trim();
-  const pos = shelvesMap[key];
+  const pos = getShelfPos(row.area);
   if(pos) return pos;
-  return { x: Number(row.x), y: Number(row.y) };
+
+  const x = Number(row.x);
+  const y = Number(row.y);
+  return { x, y };
+}
+
+// 商品rowから「範囲」座標も含めて解決
+// - area2 があるなら (x2,y2) も作る（棚キー優先→なければrow.x2,row.y2）
+function resolveXYWithRange(row){
+  const p1 = resolveXY(row);
+  const out = { ...p1 };
+
+  const a2 = (row.area2 ?? "").toString().trim();
+  if(a2){
+    const p2 = getShelfPos(a2);
+    if(p2){
+      out.x2 = p2.x;
+      out.y2 = p2.y;
+      return out;
+    }
+    const x2 = Number(row.x2);
+    const y2 = Number(row.y2);
+    if(Number.isFinite(x2) && Number.isFinite(y2)){
+      out.x2 = x2;
+      out.y2 = y2;
+    }
+  }
+  return out;
 }
 
 // --- Core Search Logic ---
@@ -71,30 +108,26 @@ function runSearch(){
   // 3. Render（複数ピン表示）
   UI.clearPins();
 
-  // 地図に複数ピン（重くなるので上限）
+  // 地図に複数ピン/ライン（重くなるので上限）
   const MAX_PINS = 12;
   found.slice(0, MAX_PINS).forEach(row => {
-    const pos = resolveXY(row);
-    const r = { ...row, x: pos.x, y: pos.y }; // UIは row.x,row.y を使う
+    const pos = resolveXYWithRange(row);
+    // UIは row.x,row.y,row.x2,row.y2 を見るので上書き
+    const r = { ...row, ...pos };
     UI.addPin(r);
   });
 
-  // meta は先頭候補を表示（後で「候補◯件」などに拡張可）
-  const firstPos = resolveXY(found[0]);
-  UI.updateMeta({ ...found[0], x: firstPos.x, y: firstPos.y });
+  // meta は先頭候補を表示
+  const firstPos = resolveXYWithRange(found[0]);
+  UI.updateMeta({ ...found[0], ...firstPos });
 
   // Render list（クリックで単一フォーカス）
   UI.renderList(found, (row) => handleResultClick(row));
-
-  // Update Status text（必要ならUI側に表示領域を用意して使う）
-  const catLabel = (selectedCategory === "all") ? "全て" : selectedCategory;
-  const msg = `カテゴリ：<b>${catLabel}</b>${q ? ` / キーワード：<b>${q}</b>` : ""}<br>候補：${found.length}件`;
-  // 現状は msg を表示していない
 }
 
 function handleResultClick(row){
-  const pos = resolveXY(row);
-  const r = { ...row, x: pos.x, y: pos.y };
+  const pos = resolveXYWithRange(row);
+  const r = { ...row, ...pos };
 
   UI.clearPins();
   UI.addPin(r);
@@ -110,13 +143,12 @@ function handleCategoryClick(cat){
 // --- Initialization ---
 // 起動を速くするため、まずキャッシュがあればそれで即表示し、裏で最新データを取得する
 async function init(force = false){
-  // 1) force=false の時は、まずローカルキャッシュを試す
   if(!force){
     const cached = loadItemsCache();
     if(cached && cached.length){
       allItems = cached;
 
-      // 棚座標もキャッシュがあれば先に復元（起動直後でも①A等が光る）
+      // 棚座標もキャッシュがあれば先に復元
       const shel = loadShelvesCache();
       if(shel) shelvesMap = shel;
 
@@ -129,7 +161,6 @@ async function init(force = false){
         : "";
 
       UI.showMessage(`準備OK（キャッシュ${timeLabel ? "：" + timeLabel : ""}）。更新確認中…`);
-      // ここで return しない：裏で最新データを取りに行く
     }else{
       UI.showMessage("データ読み込み中…");
     }
@@ -137,7 +168,7 @@ async function init(force = false){
     UI.showMessage("データ読み込み中…");
   }
 
-  // 2) ネットワークから最新を取得（成功したらキャッシュ更新）
+  // ネットワークから最新を取得（成功したらキャッシュ更新）
   try{
     const out = await loadItems({force});
     allItems = out.items;
@@ -151,7 +182,6 @@ async function init(force = false){
   }catch(e){
     console.error(e);
 
-    // 3) ネット取得に失敗：キャッシュがあれば継続、無ければエラー表示
     const cached = loadItemsCache();
     if(cached && cached.length){
       allItems = cached;
