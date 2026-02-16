@@ -1,7 +1,7 @@
 {
   "name": "商品検索システム",           
   "short_name": "店内マップ",        
-  "start_url": "./index.html",   
+  "start_url": "./top.html",   
   "display": "standalone",        
   "background_color": "#FFFFFF",  
   "theme_color": "#111111",       
@@ -10,3 +10,4 @@
     { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }
+
