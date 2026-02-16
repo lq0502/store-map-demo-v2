@@ -1,5 +1,14 @@
 // js/app.js
-import { loadItems, norm, saveItemsCache, loadItemsCache, getItemsCacheTime } from './api.js';
+import {
+  loadItems,
+  norm,
+  saveItemsCache,
+  loadItemsCache,
+  getItemsCacheTime,
+  saveShelvesCache,
+  loadShelvesCache
+} from './api.js';
+
 import * as UI from './ui.js';
 import { initScanner } from './scanner.js';
 
@@ -7,12 +16,12 @@ import { initScanner } from './scanner.js';
 let allItems = [];
 let selectedCategory = "all";
 
-// 追加：棚座標マップ（例：{"①B2":{x:20.09,y:60.63}, ...}）
+// 棚座標マップ（例：{"①B2":{x:20.09,y:60.63}, ...}）
 let shelvesMap = {};
 
 const $ = (id) => document.getElementById(id);
 
-// 追加：row（商品）から最終座標を解決する
+// row（商品）から最終座標を解決する
 // ルール：row.area に棚キー（例：①B2）が入っていれば shelvesMap を優先
 // 見つからなければ従来の row.x,row.y を使う（互換）
 function resolveXY(row){
@@ -91,11 +100,15 @@ function handleCategoryClick(cat){
 // 起動を速くするため、まずキャッシュがあればそれで即表示し、裏で最新データを取得する
 async function init(force = false){
   // 1) force=false の時は、まずローカルキャッシュを試す
-  // ※棚（shelves）はキャッシュしていないので、キャッシュ起動中は従来の row.x,row.y で動く（互換）
   if(!force){
     const cached = loadItemsCache();
     if(cached && cached.length){
       allItems = cached;
+
+      // ★追加：棚座標もキャッシュがあれば先に復元（起動直後でも①A等が光る）
+      const shel = loadShelvesCache();
+      if(shel) shelvesMap = shel;
+
       UI.renderCategoryButtons(allItems, selectedCategory, handleCategoryClick);
 
       const t = getItemsCacheTime();
@@ -118,7 +131,10 @@ async function init(force = false){
     const out = await loadItems({force});
     allItems = out.items;
     shelvesMap = out.shelvesMap || {};
+
     saveItemsCache(allItems);
+    // ★追加：棚座標も保存
+    saveShelvesCache(shelvesMap);
 
     UI.renderCategoryButtons(allItems, selectedCategory, handleCategoryClick);
     UI.showMessage("準備OK。検索するか、カテゴリを選んでください。");
@@ -129,6 +145,11 @@ async function init(force = false){
     const cached = loadItemsCache();
     if(cached && cached.length){
       allItems = cached;
+
+      // ★追加：オフラインでも棚キャッシュがあれば使う
+      const shel = loadShelvesCache();
+      if(shel) shelvesMap = shel;
+
       UI.showMessage("準備OK（キャッシュ）。現在オフラインの可能性があります。");
     }else{
       UI.showMessage("データ取得に失敗しました。");
