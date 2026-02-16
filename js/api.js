@@ -13,24 +13,51 @@ function buildIndex(row){
   return [row.name, row.category, row.brand, row.keywords, row.area, row.note].map(norm).join(" ");
 }
 
+// 数値化（x,y用）
+// 文字列でも数値でも受け取り、数値として有効なら返す
+function toNum(n){
+  const v = Number(n);
+  return Number.isFinite(v) ? v : null;
+}
+
+// shelves配列 -> { "①B2": {x:..., y:...}, ... }
+function buildShelvesMap(rows){
+  const map = {};
+  (rows || []).forEach(r => {
+    const key = (r.key ?? "").toString().trim();
+    const x = toNum(r.x);
+    const y = toNum(r.y);
+    if(key && x !== null && y !== null){
+      map[key] = { x, y };
+    }
+  });
+  return map;
+}
+
 // データをAPIから取得する非同期関数
 // force=true の場合、キャッシュを無視して最新データを取りに行きます
+// 返り値：{ items: [...], shelvesMap: {...} }
 export async function loadItems({force=false}={}){
   // fetchを使ってAPIにアクセス
   // cache: "no-store" はキャッシュを使わない設定、"default" は通常通りキャッシュを使う設定
   const res = await fetch(API_URL, { cache: force ? "no-store" : "default" });
-  
+
   // 通信エラー（404や500など）がないかチェック
   if(!res.ok) throw new Error("API error: " + res.status);
-  
+
   // レスポンスのJSONデータを解析してJSのオブジェクトに変換
   const data = await res.json();
-  
+
   // データ形式が正しいかチェック（itemsという配列があるか）
   if(!data.items) throw new Error("Invalid JSON shape");
-  
-  // 取得したデータそれぞれに "_index" という検索用の隠し項目を追加して返します
-  return data.items.map(r => ({...r, _index: buildIndex(r)}));
+
+  // items に検索用 "_index" を付与
+  const items = data.items.map(r => ({...r, _index: buildIndex(r)}));
+
+  // shelves（無い場合もあるので安全に）
+  const shelvesMap = buildShelvesMap(data.shelves);
+
+  return { items, shelvesMap };
 }
 
 // 他のファイルでも使えるように norm 関数をエクスポート
