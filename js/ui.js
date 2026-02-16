@@ -45,7 +45,7 @@ function addRangeLine(row){
   line.style.width = `${len}%`;
 
   // ★ここがポイント：太さ＆発光を控えめにして「隣のマスまで光って見える」現象を減らす
-  line.style.height = "6px";                 // 太さ（10px→6px）
+  line.style.height = "4px";                 // 太さ（10px→6px）
   line.style.borderRadius = "999px";
 
   line.style.transformOrigin = "0 50%";
@@ -56,7 +56,7 @@ function addRangeLine(row){
 
   // “光る” 느낌：淡い発光 + 透明度（控えめ）
   line.style.background = "rgba(0, 180, 255, 0.30)";          // 少し薄く
-  line.style.boxShadow  = "0 0 10px rgba(0, 180, 255, 0.35)"; // 18px→10px
+  line.style.boxShadow  = "0 0 8px rgba(0, 180, 255, 0.35)"; // 18px→10px
 
   // ツールチップ（任意）
   line.title = `${row.name ?? ""}（${row.area ?? ""}〜${row.area2 ?? ""}）`;
@@ -169,3 +169,4 @@ export function renderCategoryButtons(items, activeCat, onCatClick){
     bar.appendChild(btn);
   });
 }
+
