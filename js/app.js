@@ -114,6 +114,7 @@ function runSearch(){
     const pos = resolveXYWithRange(row);
     // UIは row.x,row.y,row.x2,row.y2 を見るので上書き
     const r = { ...row, ...pos };
+    console.log("RANGE DEBUG", r.name, r.area, r.area2, "x,y=", r.x, r.y, "x2,y2=", r.x2, r.y2);
     UI.addPin(r);
   });
 
@@ -214,3 +215,4 @@ if ("serviceWorker" in navigator) {
 
 // Start
 init(false);
+
