@@ -71,6 +71,9 @@ export { norm };
 const LS_KEY_ITEMS = "storemap_items_cache_v1";
 const LS_KEY_TIME  = "storemap_items_cache_time_v1";
 
+// 追加：棚番号→座標（shelvesMap）キャッシュ
+const LS_KEY_SHELVES = "storemap_shelves_cache_v1";
+
 // キャッシュ保存（itemsは _index 付きの配列を想定）
 export function saveItemsCache(items){
   try{
@@ -99,6 +102,29 @@ export function getItemsCacheTime(){
   try{
     const t = Number(localStorage.getItem(LS_KEY_TIME));
     return Number.isFinite(t) ? t : null;
+  }catch(e){
+    return null;
+  }
+}
+
+// ===== shelvesMap キャッシュ（棚番号→座標）=====
+// shelvesMap 保存（例：{"①A":{x:10,y:20}, ...}）
+export function saveShelvesCache(shelvesMap){
+  try{
+    localStorage.setItem(LS_KEY_SHELVES, JSON.stringify(shelvesMap || {}));
+  }catch(e){
+    // 容量超過などは無視
+  }
+}
+
+// shelvesMap 読み込み（なければ null）
+export function loadShelvesCache(){
+  try{
+    const raw = localStorage.getItem(LS_KEY_SHELVES);
+    if(!raw) return null;
+    const obj = JSON.parse(raw);
+    if(!obj || typeof obj !== "object") return null;
+    return obj;
   }catch(e){
     return null;
   }
